@@ -67,7 +67,7 @@ echo "You're about to create a new alias:"
 echo " Host: "${es_host}
 echo " Port: "${es_port}
 echo " Index: "${es_index}
-echo " Alias: "${ES_ALIAS}
+echo " Alias: "${es_alias}
 echo
 echo
 read -e -p "Do you want to carry on? [Y/n]: " confirminfo
