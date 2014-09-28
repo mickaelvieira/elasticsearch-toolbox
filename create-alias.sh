@@ -1,7 +1,7 @@
 #!/bin/bash
 
-ES_HOST="localhost"
-ES_PORT="9200";
+es_host="localhost"
+es_port="9200";
 
 if ! type "curl" > /dev/null; then
     echo "Curl does not seem to be installed."
@@ -14,32 +14,32 @@ if ! type "jq" > /dev/null; then
 fi
 
 usage() {
-    HELP="\n"
-    HELP+="Usage:\n"
-    HELP+=" $0 [options]\n"
-    HELP+="\n"
-    HELP+="Options:\n"
-    HELP+=" -i \t Provide the index name\n"
-    HELP+=" -a \t Provide the alias name\n"
-    HELP+=" -h \t Provide the server name, default localhost\n"
-    HELP+=" -p \t Provide the server port, default 9200\n"
-    echo -e ${HELP} 1>&2;
+    help="\n"
+    help+="Usage:\n"
+    help+=" $0 [options]\n"
+    help+="\n"
+    help+="Options:\n"
+    help+=" -i \t Provide the index name\n"
+    help+=" -a \t Provide the alias name\n"
+    help+=" -h \t Provide the server name, default localhost\n"
+    help+=" -p \t Provide the server port, default 9200\n"
+    echo -e ${help} 1>&2;
     exit 1;
 }
 
 while getopts ":i:a:h:p" o; do
   case "${o}" in
     i)
-      ES_INDEX=${OPTARG}
+      es_index=${OPTARG}
       ;;
     a)
-      ES_ALIAS=${OPTARG}
+      es_alias=${OPTARG}
       ;;
     h)
-      ES_HOST=${OPTARG}
+      es_host=${OPTARG}
       ;;
     p)
-      ES_PORT=${OPTARG}
+      es_port=${OPTARG}
       ;;
     *)
       usage
@@ -48,25 +48,25 @@ while getopts ":i:a:h:p" o; do
 done
 shift $((OPTIND-1))
 
-if [[ -z ${ES_INDEX} ]]; then
+if [[ -z ${es_index} ]]; then
   echo 'You must specify an index name with option -i [index name]!'
   exit 1
 fi
-if [[ -z ${ES_ALIAS} ]]; then
-  ES_ALIAS=${ES_INDEX}"-"$(date +%Y-%m-%d-%H-%M-%S)
+if [[ -z ${es_alias} ]]; then
+  es_alias=${es_index}"-"$(date +%Y-%m-%d-%H-%M-%S)
 fi
 
-ES_DOMAIN="${ES_HOST}:${ES_PORT}"
-ES_ALIAS_URL="${ES_DOMAIN}/_aliases"
+es_domain="${es_host}:${es_port}"
+es_alias_url="${es_domain}/_aliases"
 
 echo "Checking index:"
-curl -v -XHEAD ${ES_DOMAIN}"/"${ES_INDEX}
+curl -v -XHEAD ${es_domain}"/"${es_index}
 echo
 echo
 echo "You're about to create a new alias:"
-echo " Host: "${ES_HOST}
-echo " Port: "${ES_PORT}
-echo " Index: "${ES_INDEX}
+echo " Host: "${es_host}
+echo " Port: "${es_port}
+echo " Index: "${es_index}
 echo " Alias: "${ES_ALIAS}
 echo
 echo
@@ -80,12 +80,12 @@ fi
 echo
 echo "Creating alias..."
 echo
-curl -s -XPOST ${ES_ALIAS_URL} -d "
+curl -s -XPOST ${es_alias_url} -d "
 {
     \"actions\" : [
         {
             \"add\": {
-                \"index\": \"${ES_INDEX}\",
+                \"index\": \"${es_index}\",
                 \"alias\": \"${ES_ALIAS}\"
             }
         }
@@ -96,6 +96,6 @@ echo
 echo
 echo "Fetching existing aliases..."
 echo
-curl -s -XGET ${ES_ALIAS_URL} | jq .
+curl -s -XGET ${es_alias_url} | jq .
 echo
 
