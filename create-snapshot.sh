@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 ES_HOST="localhost"
 ES_PORT="9200";
 
@@ -15,26 +14,30 @@ if ! type "jq" > /dev/null; then
 fi
 
 usage() {
-    HELP="\n"
-    HELP+="Usage:\n"
-    HELP+=" $0 [options]\n"
-    HELP+="\n"
-    HELP+="Options:\n"
-    HELP+=" -i \t Provide the index name\n"
-    HELP+=" -a \t Provide the alias name\n"
-    HELP+=" -h \t Provide the server name, default localhost\n"
-    HELP+=" -p \t Provide the server port, default 9200\n"
-    echo -e ${HELP} 1>&2;
+    help="\n"
+    help+="Usage:\n"
+    help+=" $0 [options]\n"
+    help+="\n"
+    help+="Options:\n"
+    help+=" -r \t Provide the repository name\n"
+    help+=" -s \t Provide the snapshot name\n"
+    help+=" -i \t Provide the indices names (comma separated)\n"
+    help+=" -h \t Provide the server name [localhost]\n"
+    help+=" -p \t Provide the server port [9200]\n"
+    echo -e ${help} 1>&2;
     exit 1;
 }
 
-while getopts ":i:a:h:p" o; do
+while getopts "r:s:i:h:p" o; do
   case "${o}" in
-    i)
-      ES_INDEX=${OPTARG}
+    r)
+      es_repository=${OPTARG}
       ;;
-    a)
-      ES_ALIAS=${OPTARG}
+    s)
+      es_snapshot=${OPTARG}
+      ;;
+    i)
+      es_indices=${OPTARG}
       ;;
     h)
       ES_HOST=${OPTARG}
@@ -49,21 +52,31 @@ while getopts ":i:a:h:p" o; do
 done
 shift $((OPTIND-1))
 
-ES_DOMAIN="${ES_HOST}:${ES_PORT}"
-ES_SNAPSHOT_URL="${ES_DOMAIN}/_snapshot"
+if [[ -z ${es_repository} ]]; then
+  echo 'You must specify a repository name with option -r [repository name]!'
+  exit 1
+fi
+if [[ -z ${es_snapshot} ]]; then
+  echo 'You must specify a snapshot name with option -s [snapshot name]!'
+  exit 1
+fi
+if [[ -z ${es_indices} ]]; then
+  echo 'You must specify at one index with option -i [index1,index2]!'
+  exit 1
+fi
 
-ES_REPOSITORY="mickael_backup"
-ES_SNAPSHOT="mickael_snapshot"
+es_domain="${ES_HOST}:${ES_PORT}"
+es_snapshot_url="${es_domain}/_snapshot"
 
-RESPONSE=$(curl -s -XGET "${ES_SNAPSHOT_URL}/${ES_REPOSITORY}")
-STATUS=$(echo ${RESPONSE} | jq .status)
+backup_response=$(curl -s -XGET "${es_snapshot_url}/${es_repository}")
+backup_status=$(echo ${backup_response} | jq .status)
 
-if [[ -n ${STATUS} ]]; then
+if [[ -n ${backup_status} ]]; then
 
-    if [[ ${STATUS} == '404' ]]; then
+    if [[ ${backup_status} == '404' ]]; then
 
         echo
-        read -e -p "Repository [${ES_REPOSITORY}] does not exist. Would you like to create it? [Y/n]: " confirminfo
+        read -e -p "Repository [${es_repository}] does not exist. Would you like to create it? [Y/n]: " confirminfo
         echo
 
         if [[ ${confirminfo} == "n" ]]; then
@@ -76,7 +89,12 @@ if [[ -n ${STATUS} ]]; then
         echo
 
         if [[ -n ${location} ]]; then
-            curl -XPUT "${ES_SNAPSHOT_URL}/${ES_REPOSITORY}" -d "{
+
+            echo
+            echo "Creating Snapshot repository"
+            echo
+
+            curl -s -XPUT "${es_snapshot_url}/${es_repository}" -d "{
                 \"type\": \"fs\",
                 \"settings\": {
                     \"location\": \"${location}\",
@@ -87,8 +105,16 @@ if [[ -n ${STATUS} ]]; then
     fi
 fi
 
+echo
+echo "Creating Snapshot"
+echo
 
-curl -s -XPUT "${ES_SNAPSHOT_URL}/${ES_REPOSITORY}/${ES_SNAPSHOT}?wait_for_completion=true" | jq .
+curl -s -XPUT "${es_snapshot_url}/${es_repository}/${es_snapshot}?wait_for_completion=true" -d "{
+    \"indices\": \"${es_indices}\",
+    \"ignore_unavailable\": \"true\",
+    \"include_global_state\": false
+}" | jq .
 
-
-
+echo
+echo "done"
+echo
