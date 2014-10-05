@@ -9,7 +9,7 @@ if ! type "curl" > /dev/null; then
 fi
 
 if ! type "jq" > /dev/null; then
-    echo "does not seem to be installed."
+    echo "jq does not seem to be installed."
     exit 1
 fi
 
